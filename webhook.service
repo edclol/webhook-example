@@ -1,0 +1,29 @@
+[Unit]
+Description=Webhook Service
+After=network-online.target
+
+[Service]
+Type=simple
+ExecReload=/bin/kill -HUP $MAINPID
+
+ExecStart=/data/webhook/webhook
+WorkingDirectory=/data/webhook/
+PIDFile=/data/webhook/webhook.pid
+Restart=on-failure
+# StandardOutput=file:/data/webhook/logs/webhook.log
+# StandardError=file:/data/webhook/logs/webhook.log
+SyslogIdentifier=webhook
+Restart=always
+RestartSec=5
+# CapabilityBoundingSet=CAP_SET_UID
+# LockPersonality=true
+NoNewPrivileges=true
+# MemoryDenyWriteExecute=true
+PrivateTmp=true
+ProtectHome=true
+# RemoveIPC=true
+# RestrictSUIDSGID=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target
