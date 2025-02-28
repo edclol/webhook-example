@@ -1,149 +1,132 @@
 package util
 
 import (
-	"context"
-	"database/sql"
-	"fmt"
-	"log"
+    "database/sql"
+    "fmt"
+    "time"
 
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/spf13/viper"
+    _ "github.com/go-sql-driver/mysql"
+    "github.com/spf13/viper"
 )
 
-// DelMysql执行从数据库中查询特定条件数据并根据规则删除部分数据的操作，基于事务保证数据一致性
-func DelMysql() {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Printf("Recovered from panic in goroutine: %v", r)
-		}
-	}()
-
-	// 验证Viper配置是否已正确加载，这里简单检查关键的数据库配置项是否存在
-	if viper.GetString("DB.HOST") == "" || viper.GetString("DB.USER") == "" || viper.GetString("DB.PASSWORD") == "" || viper.GetString("DB.DATABASE") == "" {
-		log.Printf("Viper配置未正确初始化或缺少数据库连接相关配置项")
-		return
-	}
-
-	// log.Println("开始执行从数据库中查询特定条件数据并根据规则删除部分数据的操作")
-	// var zeros int = 0
-	// log.Println(1 / zeros)
-
-	// 从Viper中读取数据库连接信息
-	host := viper.GetString("DB.HOST")
-	user := viper.GetString("DB.USER")
-	password := viper.GetString("DB.PASSWORD")
-	database := viper.GetString("DB.DATABASE")
-
-	// 构建数据库连接字符串
-	dataSourceName := fmt.Sprintf("%s:%s@tcp(%s)/%s", user, password, host, database)
-	// 建立数据库连接
-	db, err := sql.Open("mysql", dataSourceName)
-	if err != nil {
-		log.Printf("建立数据库连接失败: %v", err)
-		return
-	}
-	defer db.Close()
-
-	// 连接可能会在后续使用时才真正建立，检查连接是否成功
-	err = db.Ping()
-	if err != nil {
-		log.Printf("检查数据库连接失败: %v", err)
-		return
-	}
-	// 获取连接池中的连接
-	conn, err := db.Conn(context.Background())
-	if err != nil {
-		log.Printf("获取连接失败: %v", err)
-		return
-	}
-	defer conn.Close()
-
-	// 开始事务
-	tx, err := conn.BeginTx(context.Background(), nil)
-	if err != nil {
-		log.Printf("开始事务失败: %v", err)
-		return
-	}
-	defer func() {
-		// 无论后续操作是否成功，在函数结束时都确保事务正确回滚（如果还未提交的话）
-		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
-			log.Printf("事务回滚失败: %v", err)
-		}
-	}()
-
-	// 定义查询语句，这里查询tasks表的符合条件的记录
-	query := `
+// 定义查询语句常量
+const (
+    outerQuery = `
         select * from (select code,version,count(1) cnt from t_ds_task_definition_log group by code,version ) t where t.cnt>1 
     `
-	rows, err := tx.Query(query)
-	if err != nil {
-		log.Printf("查询失败: %v", err)
-		return
-	}
-	defer rows.Close()
+    innerQuery = `
+        select id, code, version, name, create_time as createTime from t_ds_task_definition_log where code =? and version =? order by create_time desc 
+    `
+    deleteQuery = "DELETE FROM t_ds_task_definition_log WHERE id=?"
+)
 
-	// 遍历查询结果
-	for rows.Next() {
-		var taskID, taskVersion string
-		var taskCnt int
-		err := rows.Scan(&taskID, &taskVersion, &taskCnt)
-		if err != nil {
-			log.Printf("扫描结果失败: %v", err)
-			return
-		}
-		log.Printf("Task: %s %s %d\n", taskID, taskVersion, taskCnt)
+// DelMysql 执行从数据库中查询特定条件数据并根据规则删除部分数据的操作，基于事务保证数据一致性
+func DelMysql() error {
+    // 延迟处理 panic
+    defer func() {
+        if r := recover(); r != nil {
+            fmt.Printf("Recovered from panic in goroutine: %v", r)
+        }
+    }()
 
-		queryID := `
-            select * from t_ds_task_definition_log where code =? and version =? order by create_time desc 
-        `
-		if err := conn.PingContext(context.Background()); err != nil {
-			log.Printf("内部查询前检查数据库连接失败: %v", err)
-			return
-		}
+    // 验证 Viper 配置是否已正确加载
+    if viper.GetString("DB.HOST") == "" ||
+        viper.GetString("DB.USER") == "" ||
+        viper.GetString("DB.PASSWORD") == "" ||
+        viper.GetString("DB.DATABASE") == "" {
+        fmt.Printf("Viper配置未正确初始化或缺少数据库连接相关配置项")
+        return fmt.Errorf("Viper配置未正确初始化或缺少数据库连接相关配置项")
+    }
 
-		// 在内部查询之前检查数据库连接是否有效
-		// err = db.Ping()
-		// if err != nil {
-		// 	log.Printf("内部查询前检查数据库连接失败: %v", err)
-		// 	return
-		// }
-		innerRows, err := tx.Query(queryID, taskID, taskVersion)
-		if err != nil {
-			log.Printf("内部查询失败: %v", err)
-			return
-		}
-		defer innerRows.Close()
+    // 从 Viper 中读取数据库连接信息
+    host := viper.GetString("DB.HOST")
+    user := viper.GetString("DB.USER")
+    password := viper.GetString("DB.PASSWORD")
+    database := viper.GetString("DB.DATABASE")
 
-		isFirst := true
-		for innerRows.Next() {
-			var id, code, version, name, operateTime, createTime, updateTime string
-			err := innerRows.Scan(&id, &code, &version, &name, &operateTime, &createTime, &updateTime)
-			if err != nil {
-				log.Printf("扫描内部结果失败: %v", err)
-				return
-			}
-			if isFirst {
-				isFirst = false
-				log.Printf("不删除: Task: %s %s %s %s %s %s %s\n", id, code, version, name, operateTime, createTime, updateTime)
-				continue
-			}
-			// 确认删除操作
-			deleteQuery := "DELETE FROM t_ds_task_definition_log WHERE id=?"
-			result, err := tx.Exec(deleteQuery, id)
-			if err != nil {
-				log.Printf("删除操作失败: %v", err)
-				return
-			}
-			rowsAffected, _ := result.RowsAffected()
-			log.Printf("准备删除: Task: %s %s %s %s %s %s %s\n", id, code, version, name, operateTime, createTime, updateTime)
-			log.Printf("删除结果: %d\n", rowsAffected)
-		}
-	}
+    // 构建数据库连接字符串
+    dataSourceName := fmt.Sprintf("%s:%s@tcp(%s)/%s", user, password, host, database)
 
-	// 提交事务
-	err = tx.Commit()
-	if err != nil {
-		log.Printf("提交事务失败: %v", err)
-		return
-	}
+    // 建立数据库连接
+    db, err := sql.Open("mysql", dataSourceName)
+    if err != nil {
+        fmt.Printf("建立数据库连接失败: %v", err)
+        return fmt.Errorf("建立数据库连接失败: %w", err)
+    }
+    // 确保函数结束时关闭数据库连接
+    defer db.Close()
+
+    // 配置数据库连接池参数
+    db.SetConnMaxLifetime(1 * time.Minute) // 设置连接的最大生命周期为 30 分钟
+    db.SetMaxIdleConns(0)                  // 设置最大空闲连接数为 10
+    db.SetMaxOpenConns(3)                  // 设置最大打开连接数为 20
+
+    // 检查数据库连接是否成功
+    err = db.Ping()
+    if err != nil {
+        fmt.Printf("检查数据库连接失败: %v", err)
+        return fmt.Errorf("检查数据库连接失败: %w", err)
+    }
+
+    // 执行外部查询
+    rows, err := db.Query(outerQuery)
+    if err != nil {
+        fmt.Printf("查询失败: %v", err)
+        return fmt.Errorf("查询失败: %w", err)
+    }
+    // 确保查询结果集在函数结束时关闭
+    defer rows.Close()
+
+    // 遍历外部查询结果
+    for rows.Next() {
+        var taskID, taskVersion string
+        var taskCnt int
+
+        err := rows.Scan(&taskID, &taskVersion, &taskCnt)
+        if err != nil {
+            fmt.Printf("扫描结果失败: %v", err)
+            return fmt.Errorf("扫描结果失败: %w", err)
+        }
+        fmt.Printf("Task: %s %s %d\n", taskID, taskVersion, taskCnt)
+
+        // 执行内部查询
+        innerRows, err := db.Query(innerQuery, taskID, taskVersion)
+        if err != nil {
+            fmt.Printf("内部查询失败: %v", err)
+            return fmt.Errorf("内部查询失败: %w", err)
+        }
+        // 确保内部查询结果集在函数结束时关闭
+        defer innerRows.Close()
+
+        isFirst := true
+        // 遍历内部查询结果
+        for innerRows.Next() {
+            var id, code, version, name, createTime string
+
+            err := innerRows.Scan(&id, &code, &version, &name, &createTime)
+            if err != nil {
+                fmt.Printf("扫描内部结果失败: %v", err)
+                return fmt.Errorf("扫描内部结果失败: %w", err)
+            }
+
+            if isFirst {
+                isFirst = false
+                fmt.Printf("不删除: Task: %s %s %s %s %s\n", id, code, version, name, createTime)
+                continue
+            }
+
+            // 执行删除操作
+            result, err := db.Exec(deleteQuery, id)
+            if err != nil {
+                fmt.Printf("删除操作失败: %v", err)
+                return fmt.Errorf("删除操作失败: %w", err)
+            }
+
+            rowsAffected, _ := result.RowsAffected()
+            fmt.Printf("准备删除: Task: %s %s %s %s %s\n", id, code, version, name, createTime)
+            fmt.Printf("删除结果: %d\n", rowsAffected)
+        }
+    }
+
+    return nil
 }
