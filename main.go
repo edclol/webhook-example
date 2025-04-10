@@ -46,6 +46,7 @@ func init() {
 
 	// 修改配置值
 	viper.Set("SEND_REAL_SMS", false)
+	viper.Set("SERVER_PORT", "8080")
 
 	// 注册Prometheus指标
 	prometheus.MustRegister(httpRequestsTotal)
