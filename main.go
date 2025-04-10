@@ -44,6 +44,9 @@ func init() {
 	}
 	log.Println("Config file loaded successfully")
 
+	// 修改配置值
+	viper.Set("SEND_REAL_SMS", false)
+
 	// 注册Prometheus指标
 	prometheus.MustRegister(httpRequestsTotal)
 }

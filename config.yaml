@@ -3,7 +3,7 @@ SMS_PLATFORM_URL: "http://172.16.99.6/csp/hsb/DHC.Published.PUB0010.BS.PUB0010.c
 SOAP_ACTION: "http://www.dhcc.com.cn/DHC.Published.PUB0010.BS.PUB0010.HIPMessageServer"
 PHONE_NUMBERS: [ "15838199504", "13951073551" ]
 SMS_SEND_INTERVAL: "2"
-SEND_REAL_SMS: false
+SEND_REAL_SMS: true
 
 # 添加数据库配置信息
 DB:

@@ -127,6 +127,6 @@ func DelMysql() error {
             fmt.Printf("删除结果: %d\n", rowsAffected)
         }
     }
-
+    fmt.Println("删除完成")
     return nil
 }
