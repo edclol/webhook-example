@@ -28,7 +28,7 @@ fi
 # 输出构建成功信息
 echo "Build succeeded!"
 echo "停止远程服务器上的webhook服务"
-ssh root@schedulemaster "systemctl stop webhook"
+ssh root@schedulemaster "mkdir -p /data/webhook/ && systemctl stop webhook"
 echo "上传新的webhook二进制文件到远程服务器"
 scp webhook root@schedulemaster:/data/webhook/
 echo "上传新的配置文件到远程服务器"
