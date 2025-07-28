@@ -24,7 +24,7 @@ if ! build_webhook; then
     echo "Build failed!"
     exit 1
 fi
-
+# openssl enc -aes-256-cbc -salt -in config.yaml -out config.yaml.enc -k Z1jGiPykJNwduSfW
 # 输出构建成功信息
 echo "Build succeeded!"
 echo "停止远程服务器上的webhook服务"

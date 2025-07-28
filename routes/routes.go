@@ -12,4 +12,5 @@ func SetupRoutes(r *gin.Engine) {
 	r.POST("/health", handleHealth) // 修改: 调用handleHealth函数
 	r.POST("/test/webhook", handleTestWebhook)
 	r.POST("/del/mysql", handleDelMysql)
+	r.POST("/seatunnel/mysql/pg", handleSeatunnelMysqlPg)
 }

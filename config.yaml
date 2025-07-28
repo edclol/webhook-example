@@ -11,3 +11,16 @@ DB:
   USER: "dolphin"
   PASSWORD: "dolphin"
   DATABASE: "dolphinscheduler2"
+
+mysql_src:
+  HOST: "192.168.23.18"
+  PORT: "3306"
+  USER: "root"
+  PASSWORD: "knt123KNT123"
+  DATABASE: "ds320"
+postgres_tgt:
+  HOST: "192.168.23.24"
+  PORT: "5432"
+  USER: "postgres"
+  PASSWORD: "Knt@123456"
+  DATABASE: "ds320"
