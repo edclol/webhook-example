@@ -17,9 +17,17 @@ type CallSmsPlatform struct {
 
 // SendSms方法用于向指定手机号发送短信内容
 func (c *CallSmsPlatform) SendSms(phone, content string) bool {
+	 // 如果当前日期超过就不发送短信
+    cutoffDate := viper.GetString("SEND_REAL_SMS_END_DAY")
+    currentDate := time.Now().Format("2006-01-02")
+    if currentDate > cutoffDate {
+        log.Println("SMS to:", phone)
+		log.Println("SMS content:", content)
+        return true
+    }
+
 	if !viper.GetBool("SEND_REAL_SMS") {
 		// 如果配置文件中SEND_REAL_SMS为false，则不发送真实短信
-		log.Println("SMS sending disabled in configuration file.")
 		log.Println("SMS to:", phone)
 		log.Println("SMS content:", content)
 		return true

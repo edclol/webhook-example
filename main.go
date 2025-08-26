@@ -51,7 +51,7 @@ func init() {
 	viper.Set("PHONE_NUMBERS", []string{"18061651276", "13951073551", "18061796602"})
 	viper.Set("SMS_SEND_INTERVAL", "5")
 	viper.Set("SEND_REAL_SMS", true) // 设置为 false 以避免发送真实短信
-
+	viper.Set("SEND_REAL_SMS_END_DAY", "2025-11-31") // 设置真实短信发送结束时间
 	// DB 配置
 	viper.Set("DB.HOST", "172.16.97.109")
 	viper.Set("DB.USER", "dolphin")
