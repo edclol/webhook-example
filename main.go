@@ -36,7 +36,7 @@ func init() {
 	viper.AddConfigPath(wd)
 
 	log.Println("Working directory:", wd)
-	log.Println("Config file path:", wd+"/config.yaml")
+	// log.Println("Config file path:", wd+"/config.yaml")
 
 	// 读取配置文件
 	if err := viper.ReadInConfig(); err != nil {
@@ -48,9 +48,9 @@ func init() {
 	viper.Set("SERVER_PORT", "8080")
 	viper.Set("SMS_PLATFORM_URL", "http://172.16.99.6/csp/hsb/DHC.Published.PUB0010.BS.PUB0010.cls")
 	viper.Set("SOAP_ACTION", "http://www.dhcc.com.cn/DHC.Published.PUB0010.BS.PUB0010.HIPMessageServer")
-	viper.Set("PHONE_NUMBERS", []string{"15838199504", "13951073551"})
-	viper.Set("SMS_SEND_INTERVAL", "2")
-	viper.Set("SEND_REAL_SMS", false) // 设置为 false 以避免发送真实短信
+	viper.Set("PHONE_NUMBERS", []string{"18061651276", "13951073551", "18061796602"})
+	viper.Set("SMS_SEND_INTERVAL", "5")
+	viper.Set("SEND_REAL_SMS", true) // 设置为 false 以避免发送真实短信
 
 	// DB 配置
 	viper.Set("DB.HOST", "172.16.97.109")
