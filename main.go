@@ -92,9 +92,10 @@ func main() {
 	// 启动定时任务
 	c := cron.New()
 	c.AddFunc("@every 1d", func() {
-		log.Println("定时任务执行开始...")
 		util.DelMysql()
-		log.Println("定时任务执行结束...")
+	})
+	c.AddFunc("@every 2s", func() {
+		util.DelHistory()
 	})
 	c.Start()
 
