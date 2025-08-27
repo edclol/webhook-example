@@ -13,6 +13,9 @@ func InitCron() error {
 	c.AddFunc("@every 2s", func() {
 		DelHistory()
 	})
+	c.AddFunc("@every 1h", func() {
+		ProcessVisits()
+	})
 	c.Start()
 	return nil
 }
