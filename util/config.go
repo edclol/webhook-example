@@ -55,5 +55,12 @@ func InitConfig() error {
 	viper.Set("postgres_tgt.PASSWORD", "Knt@123456")
 	viper.Set("postgres_tgt.DATABASE", "ds320")
 
+	// 结构化数据库pg
+	viper.Set("pg_struct.HOST", "192.168.23.24")
+	viper.Set("pg_struct.PORT", 5432)
+	viper.Set("pg_struct.USER", "postgres")
+	viper.Set("pg_struct.PASSWORD", "Knt@123456")
+	viper.Set("pg_struct.DATABASE", "data_structuration")
+
 	return nil
 }
