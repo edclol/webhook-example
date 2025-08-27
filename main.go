@@ -50,6 +50,14 @@ func main() {
 		log.Fatalf("Error initializing cron: %s", err)
 	}
 
+	// 程序启动时测试ProcessVisits函数
+	log.Println("程序启动，开始测试ProcessVisits函数...")
+	if err := util.ProcessVisits(); err != nil {
+		log.Printf("ProcessVisits测试执行出错: %v", err)
+	} else {
+		log.Println("ProcessVisits测试执行完成")
+	}
+
 	// 暴露Prometheus指标
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
