@@ -24,3 +24,15 @@ func LsTest() error {
 	log.Printf("combined out:\n%s\n", string(out))
 	return nil
 }
+	
+// 获取本机ip的函数
+func GetLocalIP() (string, error) {
+	cmd := exec.Command("bash", "-c", "hostname -I | awk '{print $1}'")
+	out, err := cmd.Output()
+	if err != nil {
+		log.Printf("failed to get local IP: %v", err)
+		return "", err
+	}
+	log.Printf("local IP: %s", string(out))
+	return string(out), nil
+}
