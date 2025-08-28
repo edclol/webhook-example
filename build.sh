@@ -27,6 +27,12 @@ fi
 # openssl enc -aes-256-cbc -salt -in config.yaml -out config.yaml.enc -k Z1jGiPykJNwduSfW
 # 输出构建成功信息
 echo "Build succeeded!"
+echo "复制文件到本地"
+cp -rf ./webhook /mnt/c/Users/jesse/Desktop/
+cp -rf ./config.yaml /mnt/c/Users/jesse/Desktop/
+cp -rf ./webhook.service /mnt/c/Users/jesse/Desktop/
+echo "启动"
+./webhook
 echo "停止远程服务器上的webhook服务"
 ssh root@schedulemaster "mkdir -p /data/webhook/ && systemctl stop webhook"
 echo "上传新的webhook二进制文件到远程服务器"

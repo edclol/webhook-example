@@ -13,9 +13,9 @@ import (
 
 // PatientVisit 患者访视信息结构体
 type PatientVisit struct {
-	MrDocumentId int    `json:"mr_document_id"`
-	PersonId     int    `json:"person_id"`
-	PatientId    int    `json:"patient_id"`
+	MrDocumentId string `json:"mr_document_id"`
+	PersonId     string    `json:"person_id"`
+	PatientId    string    `json:"patient_id"`
 	Content      string `json:"content"`
 }
 
@@ -23,7 +23,7 @@ type PatientVisit struct {
 func ProcessVisits() error {
 	// 从配置加载数据库连接信息
 	connStr := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s",
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		viper.GetString("pg_struct.HOST"),
 		viper.GetString("pg_struct.PORT"),
 		viper.GetString("pg_struct.USER"),
@@ -125,12 +125,12 @@ func ProcessVisits() error {
 						return
 					}
 					
-					log.Printf("工作线程 %d 处理记录 mr_document_id=%d", workerID, visit.MrDocumentId)
+					log.Printf("工作线程 %d 处理记录 mr_document_id=%s", workerID, visit.MrDocumentId)
 					
 					// 调用Dify API
 					stage, err := GetVisitStage(fmt.Sprintf("分析访视记录确定阶段: %s", visit.Content))
 					if err != nil {
-						log.Printf("工作线程 %d 获取阶段失败 (mr_document_id=%d): %v", workerID, visit.MrDocumentId, err)
+						log.Printf("工作线程 %d 获取阶段失败 (mr_document_id=%s): %v", workerID, visit.MrDocumentId, err)
 						continue
 					}
 					
@@ -139,12 +139,12 @@ func ProcessVisits() error {
 						UPDATE public.dc_mr_document_index_outpat SET deleted_flag = $1 WHERE mr_document_id = $2 and person_id = $3 and patient_id = $4;`, stage, visit.MrDocumentId, visit.PersonId, visit.PatientId)
 					
 					if err != nil {
-						log.Printf("工作线程 %d 更新失败 (mr_document_id=%d): %v", workerID, visit.MrDocumentId, err)
+						log.Printf("工作线程 %d 更新失败 (mr_document_id=%s): %v", workerID, visit.MrDocumentId, err)
 						continue
 					}
 					
 					if rowsAffected, _ := result.RowsAffected(); rowsAffected > 0 {
-						log.Printf("工作线程 %d 成功更新记录 mr_document_id=%d", workerID, visit.MrDocumentId)
+						log.Printf("工作线程 %d 成功更新记录 mr_document_id=%s", workerID, visit.MrDocumentId)
 					}
 				}
 			}

@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -121,23 +122,60 @@ func GetVisitStage(query string) (string, error) {
 		return "", &paramError{message: "查询字符串不能为空"}
 	}
 
-	// 调用API
-	response, err := CallDifyAPI(apiKey, apiURL, query, user)
-	if err != nil {
-		log.Printf("调用Dify API失败: %v", err)
-		return "", err
+	// 添加重试机制，最多重试3次
+	maxRetries := 3
+	var lastErr error
+	var response *DifyResponse
+	
+	for i := 0; i < maxRetries; i++ {
+		// 调用API
+		var err error
+		response, err = CallDifyAPI(apiKey, apiURL, query, user)
+		if err == nil {
+			// 成功获取响应，退出重试
+			lastErr = nil
+			break
+		}
+		
+		lastErr = err
+		log.Printf("调用Dify API失败 (尝试 %d/%d): %v", i+1, maxRetries, err)
+		
+		// 如果是配置错误或参数错误，无需重试
+		if _, ok := err.(*configError); ok {
+			break
+		}
+		if _, ok := err.(*paramError); ok {
+			break
+		}
+		
+		// 短暂延迟后重试
+			if i < maxRetries-1 {
+				time.Sleep(2 * time.Second)
+			}
+	}
+
+	// 处理错误
+	if lastErr != nil {
+		return "", lastErr
 	}
 
 	// 处理响应
+	if response == nil {
+		log.Println("API响应为空")
+		return "", &responseError{message: "API响应为空"}
+	}
+	
 	if len(response.Choices) == 0 {
 		log.Println("未收到有效响应")
-		return "", &responseError{message: "未收到有效响应"}
+		// 提供一个默认值作为备用
+		return "未知", nil
 	}
 
 	content := response.Choices[0].Message.Content
 	if content == "" {
 		log.Println("响应内容为空")
-		return "", &responseError{message: "响应内容为空"}
+		// 提供一个默认值作为备用
+		return "未知", nil
 	}
 
 	return content, nil
