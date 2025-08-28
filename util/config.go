@@ -63,8 +63,9 @@ func InitConfig() error {
 	viper.Set("pg_struct.DATABASE", "data_structuration")
 
 	//dify
-	viper.Set("DIFY_API_KEY", "app-Cutxjfv8WztGuQqd3Z1gNUDO")
-	viper.Set("DIFY_API_URL", "http://192.168.23.23:8080/v1/chat-messages")
+	viper.Set("DIFY_API_BASE_URL","http://192.168.23.23:8080")
+	viper.Set("DIFY_CHAT_API_KEY", "app-Cutxjfv8WztGuQqd3Z1gNUDO")
+	viper.Set("DIFY_WORKFLOW_API_KEY", "app-ZwR4asPswIrVVrjn0BrsfLAL")
 	viper.Set("DIFY_API_USER", "user1")
 	viper.Set("DIFY_API_TIMEOUT", 3000)
 	viper.Set("DIFY_API_MAX_RETRY", 3)

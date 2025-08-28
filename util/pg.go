@@ -128,7 +128,7 @@ func ProcessVisits() error {
 					log.Printf("工作线程 %d 处理记录 mr_document_id=%s", workerID, visit.MrDocumentId)
 					
 					// 调用Dify API
-					stage, err := GetVisitStage(fmt.Sprintf("分析访视记录确定阶段: %s", visit.Content))
+					stage, err := RunWorkflowWithSDK(fmt.Sprintf("%s", visit.Content))
 					if err != nil {
 						log.Printf("工作线程 %d 获取阶段失败 (mr_document_id=%s): %v", workerID, visit.MrDocumentId, err)
 						continue
