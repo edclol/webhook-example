@@ -28,7 +28,7 @@ func InitConfig() error {
 	log.Println("Config file loaded successfully")
 
 	// 强制覆盖配置
-	viper.Set("SERVER_PORT", "8080")
+	viper.Set("SERVER_PORT", "8083") //sfy默认必须是8080
 	viper.Set("SMS_PLATFORM_URL", "http://172.16.99.6/csp/hsb/DHC.Published.PUB0010.BS.PUB0010.cls")
 	viper.Set("SOAP_ACTION", "http://www.dhcc.com.cn/DHC.Published.PUB0010.BS.PUB0010.HIPMessageServer")
 	viper.Set("PHONE_NUMBERS", []string{"18061651276", "13951073551", "18061796602"})
