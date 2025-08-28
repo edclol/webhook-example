@@ -136,7 +136,7 @@ func ProcessVisits() error {
 					
 					// 更新数据库
 					result, err := workerDB.ExecContext(ctx, `
-						UPDATE public.dc_mr_document_index_outpat SET deleted_flag = $1,patient_external = $2 WHERE mr_document_id = $2 and person_id = $3 and patient_id = $4;`, resultData.VisitNumber,resultData.GestationalWeeks, visit.MrDocumentId, visit.PersonId, visit.PatientId)
+						UPDATE public.dc_mr_document_index_outpat SET deleted_flag = $1,patient_external = $2 WHERE mr_document_id = $3 and person_id = $4 and patient_id = $5;`, resultData.VisitNumber,resultData.GestationalWeeks, visit.MrDocumentId, visit.PersonId, visit.PatientId)
 					
 					if err != nil {
 						log.Printf("工作线程 %d 更新失败 (mr_document_id=%s): %v", workerID, visit.MrDocumentId, err)
