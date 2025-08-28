@@ -3,10 +3,11 @@ package util
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
-	"encoding/json"
+	"strings"
 
 	"github.com/spf13/viper"
 	_ "github.com/lib/pq"
@@ -20,26 +21,27 @@ type PatientVisitMZ struct {
 	Content     string `json:"content"`
 }
 
+// Indicator 指标信息结构体
 type Indicator struct {
-	Code string `json:"code"`
-	Name string `json:"name"`
-	Value string `json:"value"`
+	Code         string `json:"code"`
+	Name         string `json:"name"`
+	Value        string `json:"value"`
 	ValueExplain string `json:"value_explain"`
 }
 
+// ProcessMZMain 批量处理不同deleted_flag的记录
 func ProcessMZMain() error {
-	//循环1 到6 
 	for i := 1; i <= 6; i++ {
-		// 处理访视记录
 		if err := ProcessMZ(i); err != nil {
-			log.Printf("处理访视记录失败:%d %v",  i,err)
+			log.Printf("处理访视记录失败(deleted_flag=%d): %v", i, err)
 			return err
 		}
 	}
+	return nil
 }
 
 // ProcessMZ 处理访视记录的主函数
-func ProcessMZ(deleted_flag int) error {
+func ProcessMZ(deletedFlag int) error {
 	// 从配置加载数据库连接信息
 	connStr := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
@@ -75,7 +77,9 @@ func ProcessMZ(deleted_flag int) error {
 		'文档名称: ' || document_name,
 		'文档内容: ' || COALESCE(documrnt_content_txt, '无文本内容'),
 		'诊断: ' || COALESCE(diag_name, '无诊断信息')
-	) AS "content" FROM public.dc_mr_document_index_outpat where deleted_flag = $1;`, deleted_flag)
+	) AS "content" 
+		FROM public.dc_mr_document_index_outpat 
+		WHERE deleted_flag = $1;`, deletedFlag)
 	if err != nil {
 		log.Printf("查询失败: %v", err)
 		return err
@@ -117,7 +121,7 @@ func ProcessMZ(deleted_flag int) error {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
-			
+
 			// 为每个工作线程创建独立的数据库连接
 			workerDB, err := sql.Open("postgres", connStr)
 			if err != nil {
@@ -125,12 +129,12 @@ func ProcessMZ(deleted_flag int) error {
 				return
 			}
 			defer workerDB.Close()
-			
+
 			if err := workerDB.Ping(); err != nil {
 				log.Printf("工作线程 %d 数据库连接失败: %v", workerID, err)
 				return
 			}
-			
+
 			// 处理从通道接收的任务
 			for {
 				select {
@@ -143,71 +147,71 @@ func ProcessMZ(deleted_flag int) error {
 						log.Printf("工作线程 %d 完成所有任务", workerID)
 						return
 					}
-					
+
 					log.Printf("工作线程 %d 处理记录 encounter_id=%s", workerID, visit.EncounterId)
-					
-					// 查询数据库 会返回很多行
-					inds_rows, err := workerDB.QueryRowContext(ctx, `
-						SELECT id as code , "name", null as value,  aliass as value_explain
-FROM public.t_model_view where fsjz = $1;`, deleted_flag)
+
+					// 查询数据库获取指标数据
+					indsRows, err := workerDB.QueryContext(ctx, `
+						SELECT id as code, "name", null as value, aliass as value_explain 
+						FROM public.t_model_view 
+						WHERE fsjz = $1;`, deletedFlag)
 					if err != nil {
-						log.Printf("工作线程 %d 查询失败 (encounter_id=%s): %v", workerID, visit.EncounterId, err)
+						log.Printf("工作线程 %d 查询指标失败 (encounter_id=%s): %v", workerID, visit.EncounterId, err)
 						continue
 					}
-					defer inds_rows.Close()
-					// 遍历结果集 把结果封装成list存起来
+					defer indsRows.Close()
+
+					// 遍历结果集，将结果封装成列表
 					var indicators []Indicator
-					// 遍历结果集 把结果封装成list存起来
-					var code, name, value, valueExplain string
-					for inds_rows.Next() {
-						if err := inds_rows.Scan(&code, &name, &value, &valueExplain); err != nil {
-							log.Printf("工作线程 %d 扫描结果失败: %v", workerID, err)
+					for indsRows.Next() {
+						var code, name, value, valueExplain string
+						if err := indsRows.Scan(&code, &name, &value, &valueExplain); err != nil {
+							log.Printf("工作线程 %d 扫描指标结果失败: %v", workerID, err)
 							continue
 						}
-						// 打印或处理每个结果
-						log.Printf("工作线程 %d 结果: code=%s, name=%s, value=%s, valueExplain=%s", workerID, code, name, value, valueExplain)
+
+						// 打印指标结果
+						log.Printf("工作线程 %d 指标: code=%s, name=%s, value=%s, valueExplain=%s", 
+							workerID, code, name, value, valueExplain)
+
 						indicators = append(indicators, Indicator{
-							Code:          code,
-							Name:          name,
-							Value:         value,
+							Code:         code,
+							Name:         name,
+							Value:        value,
 							ValueExplain: valueExplain,
 						})
 					}
 
-					// indicators 按照50个一组
+					// 检查指标查询是否有错误
+					if err = indsRows.Err(); err != nil {
+						log.Printf("工作线程 %d 指标行迭代错误: %v", workerID, err)
+						continue
+					}
+
+					// 按50个一组处理指标
 					for i := 0; i < len(indicators); i += 50 {
 						end := i + 50
 						if end > len(indicators) {
 							end = len(indicators)
 						}
-						// 调用Dify API
-						resultData, err := RunWorkflowWithSDK_MZ(fmt.Sprintf("%s", visit.Content), json.Marshal(indicators[i:end]))
+
+						// 将指标数组转换为JSON字符串
+						indicatorJSON, err := json.Marshal(indicators[i:end])
 						if err != nil {
-							log.Printf("工作线程 %d 获取阶段失败 (encounter_id=%s): %v", workerID, visit.EncounterId, err)
+							log.Printf("工作线程 %d 指标JSON序列化失败: %v", workerID, err)
 							continue
 						}
-						// 遍历resultData 只要结果不为空的
-						for _, item := range resultData {
-							item.Value = strings.TrimSpace(item.Value)
-							if item.Value != "" {
-								// 删除数据
-								_, err = workerDB.ExecContext(ctx, `
-									DELETE FROM public.t_patient_data WHERE p_id = $1 and v_id = $2 and field_id = $3;`, visit.PersonId, visit.PersonId, item.Code)
-								if err != nil {
-									log.Printf("工作线程 %d 删除数据失败 (encounter_id=%s): %v", workerID, visit.EncounterId, err)
-									continue
-								}
-								//insert 
-								_, err = workerDB.ExecContext(ctx, `
-									INSERT INTO public.t_patient_data
-( p_id, v_id, field_id, value, "source")
-VALUES($1, $2, $3, $4, $5);`, visit.PersonId, visit.PersonId, item.Code, item.Value)
 
-							}
+						// 调用Dify API
+						resultData, err := RunWorkflowWithSDK_MZ(visit.Content, string(indicatorJSON))
+						if err != nil {
+							log.Printf("工作线程 %d 调用Dify API失败 (encounter_id=%s): %v", workerID, visit.EncounterId, err)
+							continue
 						}
+
+						// 处理返回结果
+						processIndicatorResults(ctx, workerDB, workerID, visit, resultData)
 					}
-				
-					
 				}
 			}
 		}(i)
@@ -224,5 +228,34 @@ VALUES($1, $2, $3, $4, $5);`, visit.PersonId, visit.PersonId, item.Code, item.Va
 
 	log.Println("所有记录处理完毕")
 	return nil
+}
+
+// processIndicatorResults 处理指标结果，执行数据库删除和插入操作
+func processIndicatorResults(ctx context.Context, db *sql.DB, workerID int, visit PatientVisitMZ, indicators []Indicator) {
+	for _, item := range indicators {
+		item.Value = strings.TrimSpace(item.Value)
+		if item.Value == "" {
+			continue
+		}
+
+		// 删除已存在的数据
+		_, err := db.ExecContext(ctx, `
+			DELETE FROM public.t_patient_data 
+			WHERE p_id = $1 AND v_id = $2 AND field_id = $3;`, 
+			visit.PersonId, visit.PersonId, item.Code)
+		if err != nil {
+			log.Printf("工作线程 %d 删除数据失败 (encounter_id=%s): %v", workerID, visit.EncounterId, err)
+			continue
+		}
+
+		// 插入新数据
+		_, err = db.ExecContext(ctx, `
+			INSERT INTO public.t_patient_data (p_id, v_id, field_id, value, "source")
+			VALUES ($1, $2, $3, $4, 'dify');`, 
+			visit.PersonId, visit.PersonId, item.Code, item.Value)
+		if err != nil {
+			log.Printf("工作线程 %d 插入数据失败 (encounter_id=%s): %v", workerID, visit.EncounterId, err)
+		}
+	}
 }
 

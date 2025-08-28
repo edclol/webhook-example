@@ -2,12 +2,12 @@ package util
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"time"
 
 	"github.com/kervinchang/dify-go"
 	"github.com/spf13/viper"
-	"encoding/json"
 )
 
 // DifyFlowMZClient 封装dify-go客户端
@@ -31,7 +31,8 @@ func InitDifyFlowMZClient() error {
 	return nil
 }
 
-func RunWorkflowWithSDK_MZ(queryText string, indicators string) (*Indicator[], error) {
+// RunWorkflowWithSDK_MZ 调用Dify工作流API处理指标数据
+func RunWorkflowWithSDK_MZ(queryText string, indicators string) ([]Indicator, error) {
 	// 验证客户端是否初始化
 	if DifyFlowMZClient == nil {
 		if err := InitDifyFlowMZClient(); err != nil {
@@ -103,23 +104,21 @@ func RunWorkflowWithSDK_MZ(queryText string, indicators string) (*Indicator[], e
 	}
 
 	// 解析响应数据
-	result := &Indicator[]
+	var result []Indicator
 
 	// 尝试从响应中提取访视次数和孕期周数
 	if response.Data.Outputs != nil {
-		// 尝试获取访视次数
+		// 尝试获取指标结果
 		if resultStr, ok := response.Data.Outputs["result"]; ok {
 			// 先将interface{}类型断言为字符串，再转换为[]byte
 			if str, ok := resultStr.(string); ok {
-				if err := json.Unmarshal([]byte(str), result); err != nil {
+				if err := json.Unmarshal([]byte(str), &result); err != nil {
 					log.Printf("解析result字符串失败: %v", err)
 					return nil, &paramError{message: "解析result字符串失败"}
 				}
 			}
-			
 		}
 	}
-	// 记录获取的结果
 
 	return result, nil
 }
