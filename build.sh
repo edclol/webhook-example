@@ -55,3 +55,7 @@ ssh root@schedulemaster "systemctl daemon-reload && systemctl restart webhook &&
 # curl -X POST -H "Content-Type: application/json" http://172.16.97.110:8080/health
 # curl -X POST -H "Content-Type: application/json" http://172.16.97.110:8080/del/mysql
 # curl -X GET  http://172.16.97.110:8080/
+
+# curl -X POST http://localhost:8083/api/process/visits
+
+# curl -X POST http://localhost:8083/api/process/mz
