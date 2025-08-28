@@ -66,6 +66,8 @@ func InitConfig() error {
 	viper.Set("DIFY_API_KEY", "app-Cutxjfv8WztGuQqd3Z1gNUDO")
 	viper.Set("DIFY_API_URL", "http://192.168.23.23:8080/v1/chat-messages")
 	viper.Set("DIFY_API_USER", "user1")
+	viper.Set("DIFY_API_TIMEOUT", 3000)
+	viper.Set("DIFY_API_MAX_RETRY", 3)
 
 	return nil
 }
