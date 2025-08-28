@@ -13,9 +13,10 @@ import (
 
 // PatientVisit 患者访视信息结构体
 type PatientVisit struct {
-	ID         int    `json:"id"`
-	VisitNotes string `json:"visit_notes"`
-	VisitStage string `json:"visit_stage"`
+	MrDocumentId int    `json:"mr_document_id"`
+	PersonId     int    `json:"person_id"`
+	PatientId    int    `json:"patient_id"`
+	Content      string `json:"content"`
 }
 
 // ProcessVisits 处理访视记录的主函数
@@ -46,10 +47,16 @@ func ProcessVisits() error {
 
 	// 查询需要处理的记录
 	rows, err := db.Query(`
-		SELECT id, visit_notes, visit_stage 
-		FROM patient_visits 
-		WHERE visit_stage IS NULL OR visit_stage = ''
-		LIMIT 100;`)
+		SELECT mr_document_id, person_id, patient_id, CONCAT_WS(
+        '; ',
+        '患者姓名: ' || patient_name,
+        '性别: ' || gender_name,
+        '年龄: ' || age,
+        '就诊科室: ' || department_name,
+        '文档名称: ' || document_name,
+        '文档内容: ' || COALESCE(documrnt_content_txt, '无文本内容'),
+        '诊断: ' || COALESCE(diag_name, '无诊断信息')
+    ) AS "content" FROM public.dc_mr_document_index_outpat where deleted_flag is null;`)
 	if err != nil {
 		log.Printf("查询失败: %v", err)
 		return err
@@ -59,7 +66,7 @@ func ProcessVisits() error {
 	var visits []PatientVisit
 	for rows.Next() {
 		var visit PatientVisit
-		if err := rows.Scan(&visit.ID, &visit.VisitNotes, &visit.VisitStage); err != nil {
+		if err := rows.Scan(&visit.MrDocumentId, &visit.PersonId, &visit.PatientId, &visit.Content); err != nil {
 			log.Printf("扫描记录失败: %v", err)
 			return err
 		}
@@ -118,28 +125,26 @@ func ProcessVisits() error {
 						return
 					}
 					
-					log.Printf("工作线程 %d 处理记录 ID=%d", workerID, visit.ID)
+					log.Printf("工作线程 %d 处理记录 mr_document_id=%d", workerID, visit.MrDocumentId)
 					
 					// 调用Dify API
-					stage, err := GetVisitStage(fmt.Sprintf("分析访视记录确定阶段: %s", visit.VisitNotes))
+					stage, err := GetVisitStage(fmt.Sprintf("分析访视记录确定阶段: %s", visit.Content))
 					if err != nil {
-						log.Printf("工作线程 %d 获取阶段失败 (ID=%d): %v", workerID, visit.ID, err)
+						log.Printf("工作线程 %d 获取阶段失败 (mr_document_id=%d): %v", workerID, visit.MrDocumentId, err)
 						continue
 					}
 					
 					// 更新数据库
 					result, err := workerDB.ExecContext(ctx, `
-						UPDATE patient_visits 
-						SET visit_stage = $1, updated_at = NOW()
-						WHERE id = $2;`, stage, visit.ID)
+						UPDATE public.dc_mr_document_index_outpat SET deleted_flag = $1 WHERE mr_document_id = $2 and person_id = $3 and patient_id = $4;`, stage, visit.MrDocumentId, visit.PersonId, visit.PatientId)
 					
 					if err != nil {
-						log.Printf("工作线程 %d 更新失败 (ID=%d): %v", workerID, visit.ID, err)
+						log.Printf("工作线程 %d 更新失败 (mr_document_id=%d): %v", workerID, visit.MrDocumentId, err)
 						continue
 					}
 					
 					if rowsAffected, _ := result.RowsAffected(); rowsAffected > 0 {
-						log.Printf("工作线程 %d 成功更新记录 ID=%d", workerID, visit.ID)
+						log.Printf("工作线程 %d 成功更新记录 mr_document_id=%d", workerID, visit.MrDocumentId)
 					}
 				}
 			}

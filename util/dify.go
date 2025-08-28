@@ -107,7 +107,7 @@ func GetVisitStage(query string) (string, error) {
 	// 从配置文件获取参数
 	apiKey := viper.GetString("DIFY_API_KEY")
 	apiURL := viper.GetString("DIFY_API_URL")
-	user := viper.GetString("USER")
+	user := viper.GetString("DIFY_API_USER")
 
 	// 验证配置参数
 	if apiKey == "" || apiURL == "" {

@@ -62,5 +62,10 @@ func InitConfig() error {
 	viper.Set("pg_struct.PASSWORD", "Knt@123456")
 	viper.Set("pg_struct.DATABASE", "data_structuration")
 
+	//dify
+	viper.Set("DIFY_API_KEY", "app-Cutxjfv8WztGuQqd3Z1gNUDO")
+	viper.Set("DIFY_API_URL", "http://192.168.23.23:8080/v1/chat-messages")
+	viper.Set("DIFY_API_USER", "user1")
+
 	return nil
 }
