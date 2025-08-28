@@ -152,7 +152,7 @@ func ProcessMZ(deletedFlag int) error {
 
 					// 查询数据库获取指标数据
 					indsRows, err := workerDB.QueryContext(ctx, `
-						SELECT id as code, "name", null as value, aliass as value_explain 
+						SELECT id as code, "name", COALESCE(null, '') as value, aliass as value_explain 
 						FROM public.t_model_view 
 						WHERE fsjd = $1;`, deletedFlag)
 					if err != nil {
