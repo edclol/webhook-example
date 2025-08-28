@@ -154,7 +154,7 @@ func ProcessMZ(deletedFlag int) error {
 					indsRows, err := workerDB.QueryContext(ctx, `
 						SELECT id as code, "name", null as value, aliass as value_explain 
 						FROM public.t_model_view 
-						WHERE fsjz = $1;`, deletedFlag)
+						WHERE fsjd = $1;`, deletedFlag)
 					if err != nil {
 						log.Printf("工作线程 %d 查询指标失败 (encounter_id=%s): %v", workerID, visit.EncounterId, err)
 						continue
