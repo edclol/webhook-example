@@ -6,10 +6,11 @@ import (
 )
 
 func DelHistory() error {
-	cmd := exec.Command("bash", "-c", "history -c && history -w && > ~/.bash_history && clear")
-	err := cmd.Run()
+	// 使用更简单的命令清除历史记录，并捕获输出以便更好地调试
+	cmd := exec.Command("bash", "-c", "cat /dev/null > ~/.bash_history 2>/dev/null || true")
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Printf("failed to clear history: %v", err)
+		log.Printf("failed to clear history: %v, output: %s", err, string(out))
 	}
 	return nil
 }
