@@ -16,4 +16,5 @@ func SetupRoutes(r *gin.Engine) {
 	// 注册处理ProcessVisits和ProcessMZMain的API路由
 	r.POST("/api/process/visits", handleProcessVisits)
 	r.POST("/api/process/mz", handleProcessMZMain)
+	r.POST("/api/validate/patient", handleValidatePatientData)
 }

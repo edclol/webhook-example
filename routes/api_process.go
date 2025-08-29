@@ -78,3 +78,41 @@ func handleProcessMZMain(c *gin.Context) {
 		"message": "ProcessMZMain请求已接收，正在处理中",
 	})
 }
+
+// handleValidatePatientData 处理患者数据校验请求
+func handleValidatePatientData(c *gin.Context) {
+	if c.Request.Method != "POST" {
+		c.JSON(http.StatusMethodNotAllowed, gin.H{
+			"error": "Only POST requests are allowed",
+		})
+		return
+	}
+
+	// 异步处理请求
+	go func() {
+		// 捕获可能的panic
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("处理校验患者数据时发生panic: %v", r)
+			}
+		}()
+
+		startTime := time.Now()
+		log.Println("开始校验患者数据")
+
+		// 调用校验函数
+		err := util.ValidatePatientData()
+		if err != nil {
+			log.Printf("校验患者数据失败: %v", err)
+		}
+
+		duration := time.Since(startTime)
+		log.Printf("患者数据校验完成，耗时: %v", duration)
+	}()
+
+	// 返回响应
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "患者数据校验任务已启动，正在后台处理",
+	})
+}
