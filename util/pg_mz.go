@@ -8,6 +8,7 @@ import (
 	"log"
 	"sync"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 	_ "github.com/lib/pq"
@@ -199,10 +200,33 @@ func ProcessMZ(deletedFlag int) error {
 							continue
 						}
 
-						// 调用Dify API
-						resultData, err := RunWorkflowWithSDK_MZ(visit.Content, string(indicatorJSON))
-						if err != nil {
-							log.Printf("工作线程 %d 调用Dify API失败 (encounter_id=%s): %v", workerID, visit.EncounterId, err)
+						// 调用Dify API，添加重试机制
+						var resultData []Indicator
+						maxRetries := 3
+						retryCount := 0
+						var apiErr error
+						success := false
+
+						for retryCount < maxRetries {
+							resultData, apiErr = RunWorkflowWithSDK_MZ(visit.Content, string(indicatorJSON))
+							if apiErr == nil {
+								success = true
+								break
+							}
+
+							retryCount++
+							log.Printf("工作线程 %d 调用Dify API失败 (encounter_id=%s, 重试 %d/%d): %v", 
+								workerID, visit.EncounterId, retryCount, maxRetries, apiErr)
+
+							// 只有在还有重试次数时才休眠
+							if retryCount < maxRetries {
+								time.Sleep(2 * time.Second)
+							}
+						}
+
+						if !success {
+							log.Printf("工作线程 %d 调用Dify API达到最大重试次数 (encounter_id=%s): %v", 
+								workerID, visit.EncounterId, apiErr)
 							continue
 						}
 
