@@ -59,3 +59,4 @@ ssh root@schedulemaster "systemctl daemon-reload && systemctl restart webhook &&
 # curl -X POST http://localhost:8083/api/process/visits
 
 # curl -X POST http://localhost:8083/api/process/mz
+# curl -X POST http://localhost:8083/api/validate/patient
