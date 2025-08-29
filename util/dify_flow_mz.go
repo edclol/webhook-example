@@ -47,6 +47,13 @@ func RunWorkflowWithSDK_MZ(queryText string, indicators string) ([]Indicator, er
 		return nil, &paramError{message: "查询字符串不能为空"}
 	}
 
+	// 解析传入的指标JSON字符串，以便后续比较
+	var inputIndicators []Indicator
+	if err := json.Unmarshal([]byte(indicators), &inputIndicators); err != nil {
+		log.Printf("解析传入指标字符串失败: %v", err)
+		// 虽然解析失败，但仍然尝试继续处理，因为这不是致命错误
+	}
+
 	// 创建工作流请求参数
 	inputs := map[string]interface{}{
 		"query_text": queryText,
@@ -129,6 +136,44 @@ func RunWorkflowWithSDK_MZ(queryText string, indicators string) ([]Indicator, er
 				log.Printf("result字段不是字符串类型，实际类型: %T, 值: %v", resultStr, resultStr)
 			}
 		}
+	}
+
+	// 比较结果指标和传入指标的code和name是否一一对应
+	if len(inputIndicators) > 0 && len(result) > 0 {
+		// 创建传入指标的映射，用于快速查找
+		inputMap := make(map[string]string)
+		for _, ind := range inputIndicators {
+			inputMap[ind.Code] = ind.Name
+		}
+
+		// 检查结果指标是否与传入指标一一对应
+		for _, res := range result {
+			// 检查结果指标的code是否存在于传入指标中
+			if inputName, exists := inputMap[res.Code]; !exists {
+				log.Printf("结果指标中存在传入指标没有的code: %s", res.Code)
+				return nil, &paramError{message: "结果指标与传入指标不匹配: 存在未知的code"}
+			} else if res.Name != inputName {
+				// 检查结果指标的name是否与传入指标一致
+				log.Printf("结果指标与传入指标的name不匹配: code=%s, 传入name=%s, 结果name=%s", 
+					res.Code, inputName, res.Name)
+				return nil, &paramError{message: "结果指标与传入指标不匹配: name不一致"}
+			}
+		}
+
+		// 检查传入指标是否都在结果中出现
+		resultMap := make(map[string]bool)
+		for _, res := range result {
+			resultMap[res.Code] = true
+		}
+
+		for _, ind := range inputIndicators {
+			if !resultMap[ind.Code] {
+				log.Printf("传入指标中有结果指标没有的code: %s", ind.Code)
+				return nil, &paramError{message: "结果指标与传入指标不匹配: 缺少某些code"}
+			}
+		}
+
+		log.Printf("指标验证成功: 结果指标与传入指标一一对应，共%d个指标", len(result))
 	}
 
 	return result, nil
