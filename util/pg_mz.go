@@ -176,8 +176,8 @@ func ProcessMZ(deletedFlag int) error {
 							ValueExplain: valueExplain,
 						})
 					}
-					// 打印指标结果
-					log.Printf("工作线程 %d 指标结果: %v", workerID, indicators)
+					// 打印指标个数
+					log.Printf("工作线程 %d 指标个数: %d", workerID, len(indicators))
 					
 					// 检查指标查询是否有错误
 					if err = indsRows.Err(); err != nil {

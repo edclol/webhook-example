@@ -120,7 +120,7 @@ func RunWorkflowWithSDK_MZ(queryText string, indicators string) ([]Indicator, er
 					str = str[1 : len(str)-1]
 				}
 				
-				log.Printf("尝试解析的result字符串: %s", str)
+				// log.Printf("尝试解析的result字符串: %s", str)
 				if err := json.Unmarshal([]byte(str), &result); err != nil {
 					log.Printf("解析result字符串失败: %v", err)
 					return nil, &paramError{message: "解析result字符串失败"}
