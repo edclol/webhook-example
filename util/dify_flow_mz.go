@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/kervinchang/dify-go"
@@ -112,10 +113,20 @@ func RunWorkflowWithSDK_MZ(queryText string, indicators string) ([]Indicator, er
 		if resultStr, ok := response.Data.Outputs["result"]; ok {
 			// 先将interface{}类型断言为字符串，再转换为[]byte
 			if str, ok := resultStr.(string); ok {
+				// 清理字符串，移除可能存在的额外引号或空白字符
+				str = strings.TrimSpace(str)
+				// 移除首尾可能存在的额外引号
+				if len(str) > 1 && str[0] == '"' && str[len(str)-1] == '"' {
+					str = str[1 : len(str)-1]
+				}
+				
+				log.Printf("尝试解析的result字符串: %s", str)
 				if err := json.Unmarshal([]byte(str), &result); err != nil {
 					log.Printf("解析result字符串失败: %v", err)
 					return nil, &paramError{message: "解析result字符串失败"}
 				}
+			} else {
+				log.Printf("result字段不是字符串类型，实际类型: %T, 值: %v", resultStr, resultStr)
 			}
 		}
 	}

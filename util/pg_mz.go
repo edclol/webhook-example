@@ -169,11 +169,6 @@ func ProcessMZ(deletedFlag int) error {
 							log.Printf("工作线程 %d 扫描指标结果失败: %v", workerID, err)
 							continue
 						}
-
-						// 打印指标结果
-						log.Printf("工作线程 %d 指标: code=%s, name=%s, value=%s, valueExplain=%s", 
-							workerID, code, name, value, valueExplain)
-
 						indicators = append(indicators, Indicator{
 							Code:         code,
 							Name:         name,
@@ -181,7 +176,9 @@ func ProcessMZ(deletedFlag int) error {
 							ValueExplain: valueExplain,
 						})
 					}
-
+					// 打印指标结果
+					log.Printf("工作线程 %d 指标结果: %v", workerID, indicators)
+					
 					// 检查指标查询是否有错误
 					if err = indsRows.Err(); err != nil {
 						log.Printf("工作线程 %d 指标行迭代错误: %v", workerID, err)
@@ -232,9 +229,14 @@ func ProcessMZ(deletedFlag int) error {
 
 // processIndicatorResults 处理指标结果，执行数据库删除和插入操作
 func processIndicatorResults(ctx context.Context, db *sql.DB, workerID int, visit PatientVisitMZ, indicators []Indicator) {
+	// 初始化计数器
+	totalIndicators := len(indicators)
+	emptyIndicators := 0
+
 	for _, item := range indicators {
 		item.Value = strings.TrimSpace(item.Value)
 		if item.Value == "" {
+			emptyIndicators++
 			continue
 		}
 
@@ -257,5 +259,9 @@ func processIndicatorResults(ctx context.Context, db *sql.DB, workerID int, visi
 			log.Printf("工作线程 %d 插入数据失败 (encounter_id=%s): %v", workerID, visit.EncounterId, err)
 		}
 	}
+
+	// 输出统计信息
+	log.Printf("工作线程 %d 指标统计 (encounter_id=%s): 总指标数=%d, 空指标数=%d, 非空指标数=%d", 
+		workerID, visit.EncounterId, totalIndicators, emptyIndicators, totalIndicators-emptyIndicators)
 }
 
